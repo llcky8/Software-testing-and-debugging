@@ -15,8 +15,8 @@ export interface Address {
   postalCode: string;
   city: string;
   state: string;
-  /** ISO 3166-1 alpha-2 country code, e.g. "US" */
   country: string;
+  houseNumber: string;
 }
 
 export interface User extends Credentials {
@@ -111,7 +111,8 @@ export const createAddress = (overrides: Partial<Address> = {}): Address => ({
   postalCode: faker.location.zipCode('#####'),
   city: faker.location.city(),
   state: faker.location.state(),
-  country: 'US',
+  country: 'Kazakhstan',
+  houseNumber: faker.location.buildingNumber(),
   ...overrides,
 });
 
