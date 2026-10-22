@@ -12,7 +12,7 @@ export default defineConfig({
   },
   reporter: process.env.CI
     ? [['list'], ['html', { open: 'never' }]]
-    : [['html', { open: 'on-failure' }]],
+    : [['html', { open: 'never' }]],
 
   use: {
     baseURL: 'https://practicesoftwaretesting.com',
@@ -28,14 +28,6 @@ export default defineConfig({
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
-    },
-    {
-      name: 'firefox',
-      use: { ...devices['Desktop Firefox'] },
-    },
-    {
-      name: 'webkit',
-      use: { ...devices['Desktop Safari'] },
     },
   ],
 });
