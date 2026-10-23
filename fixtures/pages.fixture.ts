@@ -1,5 +1,5 @@
 import { test as base } from '@playwright/test';
-import { CUSTOMER, type Credentials } from '@data/user.factory';
+import { createUser, type User } from '@data/user.factory';
 import { LoginPage } from '@pages/login.page';
 import { RegisterPage } from '@pages/register.page';
 import { ProductPage } from '@pages/product.page';
@@ -12,8 +12,8 @@ type PageFixtures = {
   productPage: ProductPage;
   cartPage: CartPage;
   checkoutPage: CheckoutPage;
-  /** Signs in as CUSTOMER before the test body runs and yields its credentials */
-  loggedInCustomer: Readonly<Credentials>;
+  /** Registers a fresh unique user, signs them in, and yields that user */
+  loggedInCustomer: User;
 };
 
 const LOGIN_PATH = '/auth/login';
@@ -39,16 +39,25 @@ export const test = base.extend<PageFixtures>({
     await use(new CheckoutPage(page));
   },
 
-  loggedInCustomer: async ({ page, loginPage }, use) => {
-    await loginPage.goto();
-    await loginPage.login(CUSTOMER);
+  loggedInCustomer: async ({ page, registerPage, loginPage }, use) => {
+    const user = createUser();
+
+    await registerPage.goto();
+    await registerPage.register(user);
+
+    // Synchronization, not an assertion: wait for the post-registration redirect so the
+    // login form is rendered before it is filled. No loginPage.goto() — the redirect lands there.
+    // If registration fails, this times out (check registerPage.registerError).
+    await page.waitForURL((url) => url.pathname.includes(LOGIN_PATH));
+
+    await loginPage.login(user);
 
     // Synchronization, not an assertion: resolves once the SPA routes away from the login page.
-    // VERIFY: customers are expected to land on "/account"; the predicate below deliberately
+    // VERIFY: customers are expected to land on "/account"; the predicate deliberately
     // avoids depending on the exact destination. If login fails, this times out (check loginPage.loginError).
     await page.waitForURL((url) => !url.pathname.startsWith(LOGIN_PATH));
 
-    await use(CUSTOMER);
+    await use(user);
   },
 });
 
