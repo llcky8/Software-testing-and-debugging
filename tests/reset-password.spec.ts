@@ -1,5 +1,5 @@
 import { test, expect } from '@fixtures/pages.fixture';
-import { CUSTOMER, generateUniqueEmail } from '@data/user.factory';
+import { CUSTOMER } from '@data/user.factory';
 
 test.describe('Reset password', () => {
   test('requesting a reset for a known email shows a confirmation and no error', async ({ loginPage }) => {
@@ -12,9 +12,9 @@ test.describe('Reset password', () => {
   });
 
   test('requesting a reset for an invalid email shows an error message', async ({ loginPage }) => {
-    // "Invalid" is interpreted as a well-formed but unregistered address (see VERIFY list below)
+    // "Invalid" is interpreted неверный формат (see VERIFY list below)
     await loginPage.goto();
-    await loginPage.requestPasswordReset(generateUniqueEmail());
+    await loginPage.requestPasswordReset('not-an-email');
 
     await expect(loginPage.forgotPasswordError).toBeVisible();
   });

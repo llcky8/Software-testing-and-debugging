@@ -38,8 +38,8 @@ export class LoginPage extends BasePage {
     // does not clash with the login form's "email" field.
     this.forgotPasswordEmailInput = page.getByTestId('email'); // VERIFY
     this.forgotPasswordSubmitButton = page.getByTestId('forgot-password-submit'); // VERIFY
-    this.forgotPasswordConfirmation = page.getByTestId('forgot-password-success'); // VERIFY
-    this.forgotPasswordError = page.getByTestId('forgot-password-error'); // VERIFY
+    this.forgotPasswordConfirmation = page.getByRole('alert');
+    this.forgotPasswordError = page.getByTestId('email-error');
   }
 
   async login({ email, password }: Credentials): Promise<void> {
