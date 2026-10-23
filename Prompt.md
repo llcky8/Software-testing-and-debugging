@@ -1,4 +1,4 @@
-# Claude.ai model Opus 3.5 with medium effort level
+# Claude.ai model Opus 5.5 with medium effort level
 
 ## Prompt 1. Setup & Configuration
 
