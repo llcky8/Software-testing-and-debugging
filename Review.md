@@ -1,50 +1,61 @@
-# Ревью: автотесты и работа с AI
+# Review: automated tests and working with AI
 
-Проект: E2E-тесты для practicesoftwaretesting.com. 5 тест-кейсов, 7 автотестов.
+Project: E2E tests for practicesoftwaretesting.com. 5 test cases, 7 automated tests.
 
-## 1. Как я работала с AI
-Промпты я составляла сама и перед отправкой обсуждала с Claude, который подсвечивал пропуски. Какие советы брать, решала я. Сырые ответы ИИ сохранены отдельными коммитами «AI output after prompt N (raw, unchanged)», скриншоты лежат в `screenshots/`.
+## 1. How I worked with the AI
 
-## 2. Общие настройки
-- **Алиасы путей** (`@fixtures`, `@pages`, `@data`): предложил ИИ, я оставила и прописала в `tsconfig.json`: импорты короче и не ломаются при переносе файлов.
-- **Браузеры:** ИИ сгенерировал три (chromium, firefox, webkit). В задании и в примере преподавателя (слайд 19) только Chromium, поэтому я убрала Firefox и Webkit из конфига, `package.json` и README: запуск проще, меньше риск падений у проверяющего.
-- **`@faker-js/faker`:** ИИ подключил без просьбы. Я оставила, но записала риск: случайные данные усложняют воспроизведение падений.
-- **Параллелизм:** при 6 воркерах страницы иногда не загружались (белый экран на скриншотах). Я поставила `workers: 3`, `timeout: 60_000`, `actionTimeout: 15_000`, `navigationTimeout: 45_000`. Падений стало 0–1 из 21 (раньше 3).
-- **`retries: 1`:** из-за задержек публичного стенда. Тест, прошедший со второго раза, виден в отчёте как flaky.
+I wrote the prompts myself and discussed them with Claude before sending them; Claude pointed out gaps, and I decided which advice to take. Every raw AI answer is saved as a separate commit named "AI output after prompt N (raw, unchanged)", and the screenshots are in `screenshots/`. `Description.md` and `README.md` were drafted with Claude and checked by me against the code.
 
-## 3. Находки
+## 2. General settings
 
-**1. Форма регистрации.**
-ИИ: тип `Address` без номера дома, страна кодом `'US'`.
-Проверила: на сайте есть поле номера дома (`data-test="house_number"`), страна выбирается по тексту `United States of America (the)`.
-Сделала: добавила `houseNumber` в `Address` и точную строку страны.
+- **Path aliases** (`@fixtures`, `@pages`, `@data`): the AI suggested them, I kept them and set them in `tsconfig.json`: imports are shorter and do not break when files are moved.
+- **Browsers:** the AI generated three (chromium, firefox, webkit). The assignment and the teacher's example (slide 19) use only Chromium, so I removed Firefox and Webkit from the config, `package.json` and the README: it is simpler to run and there is less risk of failures on the reviewer's machine.
+- **`@faker-js/faker`:** the AI added it without being asked. I kept it but wrote down the risk: random data makes failures harder to reproduce.
+- **Parallelism:** with 6 workers the pages sometimes did not load (a white screen in the failure screenshots). I set `workers: 3`, `timeout: 60_000`, `actionTimeout: 15_000` and `navigationTimeout: 45_000`. Failures dropped to 0–1 out of 21 (before it was 3).
+- **`retries: 1`:** because of the delays of the public site. A test that passes only on the second attempt is shown in the report as flaky.
 
-**2. Автозаполнение адреса.**
-ИИ: не знал о нём (сайт ему недоступен).
-Проверила вручную: после ввода страны, индекса и номера дома сайт сам подставляет улицу и штат; для Казахстана подставляет California.
-Сделала: записала порядок в промпт: страна → индекс → номер дома → ждём заполнения улицы → перезаписываем улицу, город, штат и телефон своими значениями. ИИ реализовал это в Page Object.
+## 3. Findings
 
-**3. Сброс пароля (промпты 3 и 5).**
-ИИ: придумал `forgot-password-success` и `forgot-password-error` (в промпте 3 с `// VERIFY`); «invalid email» понял как незарегистрированный адрес.
-Проверила: в реальном DOM этих атрибутов нет. Успех это `<div role="alert">`, ошибка формата это `data-test="email-error"`. Для незарегистрированного email сайт ничего не показывает (возможно, защита от перебора, не проверено).
-Сделала: исправила локаторы в `pages/login.page.ts`. Второй тест в `tests/reset-password.spec.ts` теперь с некорректным форматом (`not-an-email`).
+**1. Registration form.**
+AI: the `Address` type had no house number and the country was a code (`'US'`).
+I checked: the site has a house number field (`data-test="house_number"`) and the country is selected by its text, `United States of America (the)`.
+I did: added `houseNumber` to `Address` and the exact country string.
 
-**4. Блокировка аккаунта (промпты 4 и 6).**
-ИИ: использовал общий аккаунт `CUSTOMER`; в примере была бессмысленная проверка `expect(email).toBe(...)`, я её не использовала.
-Проверила: аккаунт заблокирован (Account locked), кто это сделал, неизвестно: он публичный.
-Сделала: по моему промпту 6 ИИ переписал `loggedInCustomer`, теперь каждый тест регистрирует нового пользователя. Тесты не зависят от общего аккаунта.
+**2. Address autofill.**
+AI: did not know about it (it cannot open the site).
+I checked by hand: after the country, postcode and house number are entered, the site fills in street and state by itself; for Kazakhstan it fills in California.
+I did: wrote the order into the prompt: country → postcode → house number → wait until the street is filled → overwrite street, city, state and phone with my own values. The AI implemented this in the page object.
 
-**5. Товары не в наличии (промпт 7).**
-ИИ: по моему промпту добавил `openFirstInStockProduct()` с фильтром `hasNot`.
-Проверила: первый товар часто out-of-stock (`data-test="out-of-stock"` внутри карточки), и тест покупки падал. ИИ использовал `.first()`, что формально нарушает моё правило про позиционные локаторы.
-Сделала: оставила `.first()`: взять первый из отфильтрованных товаров в наличии это и есть требование. В последних запусках `buy-product` проходит.
+**3. Password reset (prompts 3 and 5).**
+AI: invented `forgot-password-success` and `forgot-password-error` (marked `// VERIFY` in prompt 3), and understood "invalid email" as an unregistered address.
+I checked: these attributes do not exist in the real DOM. Success is a `<div role="alert">`, a format error is `data-test="email-error"`. For an unregistered email the site shows nothing (maybe protection against guessing, not verified).
+I did: fixed the locators in `pages/login.page.ts`. The second test in `tests/reset-password.spec.ts` now uses an invalid format (`not-an-email`).
 
-## 4. Стенд с багами
-Первый запуск против `with-bugs` был намеренным. Последующие (ручные поломки ожиданий) тоже ушли туда из-за несброшенной `BASE_URL`. Прямые ссылки на стенде дают 404, форма регистрации другой версии (нет House number, перепутаны Country и State), поэтому прогон ничего не доказал.
-Проверка силы проверок на чистом стенде: я по очереди ломала по одному ожиданию и запускала файл. login.spec.ts: /\/account/ → /\/accounttt/, упало с toHaveURL failed. compare-products.spec.ts: к ожидаемому названию добавила XYZ, упало с toHaveText failed (первая попытка не засчиталась: я испортила не ту строку, и тест упал по таймауту клика). reset-password.spec.ts: toBeVisible() → toBeHidden() у ошибки, упало с toBeHidden failed. После каждой проверки правку откатывала.
+**4. Locked account (prompts 4 and 6).**
+AI: used the shared `CUSTOMER` account; the usage example contained a pointless check, `expect(email).toBe(...)`, which I did not use.
+I checked: the account was locked ("Account locked"); who locked it is unknown, it is public.
+I did: with my prompt 6 the AI rewrote `loggedInCustomer`: every test registers a new user. The tests no longer depend on a shared account.
 
-## 5. Непроверенное
-Не использовались и не проверялись: `nav-menu`, `nav-sign-out`, `order-confirmation`, кнопка удаления в корзине.
+**5. Out-of-stock products (prompt 7).**
+AI: with my prompt it added `openFirstInStockProduct()` using a `hasNot` filter.
+I checked: the first product is often out of stock (`data-test="out-of-stock"` inside the card) and the buy test failed because of it. The AI used `.first()`, which formally breaks my own rule from prompt 3 about positional locators.
+I did: kept `.first()`: taking the first of the in-stock products is exactly the requirement. In the latest runs `buy-product` passes.
 
-## 6. Статус
-Последний одиночный запуск: 7 из 7. В серии из 21 теста один упал: страница входа не загрузилась за 15 секунд (сайт).
+## 4. The buggy build and the strength of the assertions
+
+The first run against `with-bugs.practicesoftwaretesting.com` was intentional. The later runs (my manual breaking of expectations) also went there by mistake because `BASE_URL` was not reset. Direct links on that site return 404 and the registration form is a different version (no House number, the Country and State labels are swapped), so the run proved nothing.
+
+Assertion strength on the normal site: I broke one expectation at a time and ran only that file; after each check I reverted the change with `git checkout -- tests/`.
+- `login.spec.ts`: `/\/account/` → `/\/accounttt/`. Failed with `toHaveURL ... failed` (`screenshots/mutation-login.png`).
+- `compare-products.spec.ts`: added `XYZ` to the expected name. Failed with `toHaveText ... failed` (`screenshots/mutation-compare.png`). My first attempt did not count: I had broken the wrong line and the test failed with a click timeout instead.
+- `reset-password.spec.ts`: `toBeVisible()` → `toBeHidden()` on the error in the second test. Failed with `toBeHidden ... failed` (`screenshots/mutation-reset.png`).
+
+## 5. Not verified
+
+Not used by the tests and not checked by hand: `nav-menu`, `nav-sign-out`, `order-confirmation`, the remove button in the cart.
+
+## 6. Current status
+
+The latest single run: 7 of 7 passed. I also ran the suite from a fresh clone of the GitHub repository (`npm install`, `npx playwright install chromium`, `npx playwright test`): 7 of 7 passed. In a series of 21 runs one test failed because the login page did not load within 15 seconds (the site).
+
+I also searched the cloned repository by text: it contains no `waitForTimeout`, no XPath, no locators in the specs and no `expect` in the page objects.
