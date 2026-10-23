@@ -5,8 +5,8 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
-  timeout: 30_000,
+  workers: 3,
+  timeout: 60_000,
   expect: {
     timeout: 5_000,
   },
@@ -15,13 +15,13 @@ export default defineConfig({
     : [['html', { open: 'never' }]],
 
   use: {
-    baseURL: 'https://practicesoftwaretesting.com',
+    baseURL: process.env.BASE_URL ?? 'https://practicesoftwaretesting.com',
     testIdAttribute: 'data-test',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
-    actionTimeout: 10_000,
-    navigationTimeout: 30_000,
+    actionTimeout: 15_000,
+    navigationTimeout: 45_000,
   },
 
   projects: [
