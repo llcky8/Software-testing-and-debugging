@@ -98,6 +98,26 @@ export class ProductPage extends BasePage {
     await this.page.waitForURL(/\/product\//);
   }
 
+  /**
+   * Opens the first catalog card that has no out-of-stock marker and returns its name.
+   * `.first()` is used deliberately: "first in-stock" is the requirement, and specs never
+   * assert on catalog order. textContent() auto-waits until such a card is rendered.
+   */
+  async openFirstInStockProduct(): Promise<string> {
+    const firstInStockCard = this.productCards
+      .filter({ hasNot: this.page.getByTestId('out-of-stock') })
+      .first();
+
+    const name = (await firstInStockCard.getByTestId('product-name').textContent())?.trim() ?? '';
+    if (!name) {
+      throw new Error('First in-stock product card has an empty name');
+    }
+
+    await firstInStockCard.click();
+    await this.page.waitForURL(/\/product\//);
+    return name;
+  }
+
   // --- Product detail ---
 
   async getUnitPrice(): Promise<number> {

@@ -3,18 +3,16 @@ import { createAddress } from '@data/user.factory';
 
 test.describe('Buy product', () => {
   test('a signed-in customer can buy a product and sees a payment success confirmation', async ({
-    loggedInCustomer, // activates sign-in as CUSTOMER before the test body
+    loggedInCustomer, // activates registration + sign-in of a fresh user before the test body
     productPage,
     cartPage,
     checkoutPage,
   }) => {
-    // Pick a product from the catalog instead of hardcoding a name
     await productPage.goto();
-    await expect(productPage.productCards).not.toHaveCount(0);
-    const [productName] = await productPage.getAllProductNames();
+    const productName = await productPage.openFirstInStockProduct();
 
-    await productPage.openProduct(productName);
-    await expect(productPage.addToCartButton).toBeEnabled(); // guards against an out-of-stock product
+    // Guard with a clear failure if the product's stock state changed after selection
+    await expect(productPage.addToCartButton).toBeEnabled();
     await productPage.addToCart();
 
     // The cart belongs to this test's fresh browser context, so its contents are owned by this test
