@@ -1,4 +1,8 @@
+import { existsSync } from 'node:fs';
 import { defineConfig, devices } from '@playwright/test';
+
+// Local runs read credentials from .env; in CI they come from GitHub secrets
+if (existsSync('.env')) process.loadEnvFile('.env');
 
 export default defineConfig({
   testDir: './tests',
