@@ -4,19 +4,21 @@ import { defineConfig, devices } from '@playwright/test';
 // Local runs read credentials from .env; in CI they come from GitHub secrets
 if (existsSync('.env')) process.loadEnvFile('.env');
 
+const isCI = !!process.env.CI;
+
 export default defineConfig({
   testDir: './tests',
   fullyParallel: true,
-  forbidOnly: !!process.env.CI,
-  retries: 1,
-  workers: 3,
+  forbidOnly: isCI,
+  retries: isCI ? 2 : 0,
+  workers: isCI ? 2 : undefined,
   timeout: 60_000,
   expect: {
     timeout: 5_000,
   },
-  reporter: process.env.CI
-    ? [['list'], ['html', { open: 'never' }]]
-    : [['html', { open: 'never' }]],
+  reporter: isCI
+    ? [['list'], ['blob'], ['junit', { outputFile: 'reports/junit.xml' }]]
+    : [['list'], ['html', { open: 'on-failure' }]],
 
   use: {
     baseURL: process.env.BASE_URL ?? 'https://practicesoftwaretesting.com',

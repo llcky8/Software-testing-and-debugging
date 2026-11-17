@@ -3,6 +3,21 @@
 Automated tests written with Playwright and TypeScript for https://practicesoftwaretesting.com.
 5 test cases, 7 automated tests (details in [`Description.md`](Description.md)).
 
+## CI
+
+### Runtime
+
+#### Local estimate
+
+Measured on my machine with `Measure-Command` (PowerShell). This is only a rough local reference; the numbers that compare the CI configurations come from GitHub Actions.
+
+| Configuration | Command | Time |
+| --- | --- | --- |
+| 1 worker | `npx playwright test --workers=1` | 36.9 s |
+| Default workers | `npx playwright test` | 15.0 s |
+
+Running the tests in parallel workers makes the local run about 2.5 times faster.
+
 ## Requirements
 
 - Node.js (tested on: `v24.15.0`)
