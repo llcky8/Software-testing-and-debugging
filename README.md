@@ -5,7 +5,35 @@ Automated tests written with Playwright and TypeScript for https://practicesoftw
 
 ## CI
 
+[![Playwright Tests](https://github.com/llcky8/Software-testing-and-debugging/actions/workflows/playwright.yml/badge.svg?branch=main)](https://github.com/llcky8/Software-testing-and-debugging/actions/workflows/playwright.yml)
+
+GitHub Actions runs the suite alongside the repository and uses a job matrix to run four Playwright shards in parallel.
+
+- [`playwright.yml`](.github/workflows/playwright.yml) runs on pushes and pull requests and defines a manual trigger.
+- Each shard uses Node.js 22, the npm download cache, `npm ci`, and Chromium with its system dependencies. Together, the shards run the full suite.
+- With `CI=true`, Playwright forbids `test.only`, uses two workers per shard and two retries, and writes list, blob, and JUnit reports. It records a trace on the first retry.
+- The report job combines the shard blobs into HTML and JUnit reports, including when tests fail. The `playwright-report`, `junit-report`, and `test-results-N` artifacts are configured for 14 days. Intermediate blob artifacts are configured for one day.
+
+### Verification
+
+Push run #1 for commit `c3e5cc9` on `ci/playwright-pipeline` ran all four shards. On attempt 3, shards 3 and 4 passed, shards 1 and 2 failed, and **Merge reports** succeeded. GitHub listed 10 artifacts. [Push run #1](https://github.com/llcky8/Software-testing-and-debugging/actions/runs/44297976364)
+
+Playwright traces show the same failure in the purchase test (`buy-product.spec.ts`, shard 1) and the valid-credentials login test (`login.spec.ts`, shard 2). After registration, the public Toolshop demo served Cloudflare's security verification page at `/auth/login`. Both tests timed out after 15 seconds waiting for the login email field. A separate test URL is currently unavailable.
+
+The full Playwright suite passed locally against Toolshop Sprint 5 running in Docker at `http://localhost:4200` (7 passed). The local database was initialized with migrations and demo seed data.
+
+The first GitHub Actions run with containerized Toolshop stopped before Playwright started. The prebuilt Nginx container exited with `exec format error`, leaving the catalog API unavailable on port 8091. The workflow now builds the web image from Toolshop's upstream Dockerfile on the runner. This change is pending verification in GitHub Actions. [Containerized push run](https://github.com/llcky8/Software-testing-and-debugging/actions/runs/44356776560)
+
+Pending evidence includes a green GitHub Actions push run, a separate pull request run, and an npm cache restoration log. The badge above targets `main`. The recorded GitHub run was on the feature branch.
+
 ### Runtime
+
+| Configuration | Total GitHub Actions duration | Test step (slowest shard) |
+| --- | --- | --- |
+| 1 shard | Pending | Pending |
+| 4 shards + report merge | Pending successful benchmark | Pending |
+
+The failed four-shard push attempt took 1 min 56 s. The comparison will use completed, successful runs under both configurations.
 
 #### Local estimate
 
@@ -82,8 +110,8 @@ Review.md        how I reviewed and corrected the AI output
 
 - Chromium only.
 - `testIdAttribute: 'data-test'`: the site uses this attribute, not `data-testid`.
-- `workers: 3`, `timeout: 60_000`, `actionTimeout: 15_000`, `navigationTimeout: 45_000`: the site is public and shared, and with many parallel browsers pages sometimes did not load in time.
-- `retries: 1`: one retry because of the unstable loading of the public site. A test that passes only on the second attempt is shown as flaky in the report.
+- `timeout: 60_000`, `actionTimeout: 15_000`, `navigationTimeout: 45_000`.
+- Local runs use Playwright's default worker count and zero retries. CI uses two workers per shard and two retries. A test that passes on a retry is reported as flaky.
 - A screenshot and a video are kept when a test fails.
 
 ## Known limitations

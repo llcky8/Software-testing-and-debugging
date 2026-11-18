@@ -49,6 +49,8 @@ jobs:
           set -euo pipefail
           compose=(docker compose -f docker-compose.prod.yml)
 
+          # Build the upstream Nginx image for the runner's architecture.
+          docker build -f _docker/web.docker -t testsmith/practice-software-testing-web:latest _docker
           "${compose[@]}" up --pull missing -d mariadb laravel-api web angular-ui
 
           db_ready=false
