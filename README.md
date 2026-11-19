@@ -22,18 +22,26 @@ Playwright traces show the same failure in the purchase test (`buy-product.spec.
 
 The full Playwright suite passed locally against Toolshop Sprint 5 running in Docker at `http://localhost:4200` (7 passed). The local database was initialized with migrations and demo seed data.
 
-The first GitHub Actions run with containerized Toolshop stopped before Playwright started. The prebuilt Nginx container exited with `exec format error`, leaving the catalog API unavailable on port 8091. The workflow now builds the web image from Toolshop's upstream Dockerfile on the runner. This change is pending verification in GitHub Actions. [Containerized push run](https://github.com/llcky8/Software-testing-and-debugging/actions/runs/44356776560)
+The first GitHub Actions run with containerized Toolshop stopped before Playwright started. The prebuilt Nginx container exited with `exec format error`, leaving the catalog API unavailable on port 8091. The workflow now builds the web image from Toolshop's upstream Dockerfile on the runner. [Failed containerized push run](https://github.com/llcky8/Software-testing-and-debugging/actions/runs/44356776560)
 
-Pending evidence includes a green GitHub Actions push run, a separate pull request run, and an npm cache restoration log. The badge above targets `main`. The recorded GitHub run was on the feature branch.
+The push run with the rebuilt Nginx image succeeded on its second attempt. All four Playwright shards passed and the merge job completed successfully. The first attempt was cancelled while the jobs were still running. [Successful push run, attempt 2](https://github.com/llcky8/Software-testing-and-debugging/actions/runs/44358986066/attempts/2)
+
+Opening pull request #1 triggered a separate `pull_request` run. All four shards and the merge job passed. The shards started with an empty npm cache, and the merge job's `actions/setup-node@v4` step logged `Cache restored successfully`. The badge above targets `main`. Both verified runs used the feature branch changes. [Successful pull request run](https://github.com/llcky8/Software-testing-and-debugging/actions/runs/44362001857)
+
+Screenshots: [push](screenshots/ci-push.png), [pull request](screenshots/ci-pr.png), [npm cache](screenshots/ci-cache.png), [artifacts](screenshots/ci-artifacts.png), and [local Toolshop run](screenshots/ci-toolshop-local.png). The public-site failure is visible in the [purchase trace](screenshots/ci-trace-purchase.png) and [login trace](screenshots/ci-trace-login.png).
+
+### Playwright in Docker
+
+The full suite also passed from the official Linux Playwright image `mcr.microsoft.com/playwright:v1.64.1-noble`, with `CI=true` and the local Toolshop as the target. The run reported **7 passed in 9.2 seconds** using two workers.
 
 ### Runtime
 
-| Configuration | Total GitHub Actions duration | Test step (slowest shard) |
-| --- | --- | --- |
-| 1 shard | Pending | Pending |
-| 4 shards + report merge | Pending successful benchmark | Pending |
+| Configuration | Total GitHub Actions duration | Test step (slowest shard) | Run |
+| --- | --- | --- | --- |
+| 1 shard + report merge | 6 min 35 s | 9 s | [PR run #6](https://github.com/llcky8/Software-testing-and-debugging/actions/runs/44483182021) |
+| 4 shards + report merge | 2 min 21 s | 8 s | [PR run #4](https://github.com/llcky8/Software-testing-and-debugging/actions/runs/44362001857) |
 
-The failed four-shard push attempt took 1 min 56 s. The comparison will use completed, successful runs under both configurations.
+These are single measurements from successful pull request runs with the same Toolshop setup. The four-shard run finished 4 min 14 s sooner, while the slowest test step was only 1 s faster, so the overall difference cannot be attributed to sharding alone.
 
 #### Local estimate
 
