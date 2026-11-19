@@ -1,0 +1,147 @@
+name: Playwright Tests
+
+on:
+  push:              # every push to every branch
+  pull_request:      # every PR
+  workflow_dispatch: # manual runs for timing
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Tests (shard ${{ matrix.shardIndex }}/${{ matrix.shardTotal }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shardIndex: [1, 2, 3, 4]
+        shardTotal: [4]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm                 # caches ~/.npm keyed on package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Check out Toolshop
+        uses: actions/checkout@v4
+        with:
+          repository: testsmith-io/practice-software-testing
+          ref: ae7caecb811dd8952c09d997e69be7cb946ecd44
+          path: toolshop
+          persist-credentials: false
+
+      - name: Start Toolshop and seed the database
+        working-directory: toolshop
+        env:
+          SPRINT: sprint5
+        run: |
+          set -euo pipefail
+          compose=(docker compose -f docker-compose.prod.yml)
+
+          # Build the upstream Nginx image for the runner's architecture.
+          docker build -f _docker/web.docker -t testsmith/practice-software-testing-web:latest _docker
+          "${compose[@]}" up --pull missing -d mariadb laravel-api web angular-ui
+
+          db_ready=false
+          for attempt in {1..30}; do
+            if "${compose[@]}" exec -T mariadb mysqladmin ping --silent; then
+              db_ready=true
+              break
+            fi
+            sleep 2
+          done
+          if [[ "$db_ready" != true ]]; then
+            "${compose[@]}" logs --tail 50 mariadb
+            exit 1
+          fi
+
+          "${compose[@]}" exec -T --user www-data laravel-api php artisan migrate --seed --force
+          "${compose[@]}" up -d cron
+
+          for attempt in {1..30}; do
+            if curl -fsS --max-time 5 http://localhost:4200/ >/dev/null &&
+               curl -fsS --max-time 5 http://localhost:8091/products >/dev/null; then
+              echo "Toolshop UI and catalog API are ready"
+              exit 0
+            fi
+            sleep 2
+          done
+
+          "${compose[@]}" logs --tail 50 web laravel-api angular-ui
+          exit 1
+      - name: Run Playwright tests
+        run: npx playwright test --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}
+        env:
+          BASE_URL: http://localhost:4200
+          CUSTOMER_EMAIL: customer@practicesoftwaretesting.com
+          CUSTOMER_PASSWORD: welcome01
+          CUSTOMER2_EMAIL: customer2@practicesoftwaretesting.com
+          CUSTOMER2_PASSWORD: welcome01
+
+      - name: Upload blob report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: blob-report-${{ matrix.shardIndex }}
+          path: blob-report
+          retention-days: 1          # intermediate file
+
+      - name: Upload traces and JUnit
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.shardIndex }}
+          path: |
+            test-results/
+            reports/
+          retention-days: 14
+
+  merge-reports:
+    name: Merge reports
+    if: ${{ !cancelled() }}
+    needs: [test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Download blob reports
+        uses: actions/download-artifact@v4
+        with:
+          path: all-blob-reports
+          pattern: blob-report-*
+          merge-multiple: true
+
+      - name: Merge into HTML + JUnit
+        run: npx playwright merge-reports --config merge.config.ts ./all-blob-reports
+
+      - name: Upload HTML report
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report
+          retention-days: 14
+
+      - name: Upload merged JUnit
+        uses: actions/upload-artifact@v4
+        with:
+          name: junit-report
+          path: reports/junit-merged.xml
+          retention-days: 14

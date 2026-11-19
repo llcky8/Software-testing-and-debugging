@@ -35,17 +35,32 @@ export type UserOverrides = Partial<Omit<User, 'address'>> & {
 
 // ---------------------------------------------------------------------------
 // Pre-existing accounts (seeded on practicesoftwaretesting.com)
+// Credentials come from environment variables: a local .env file
+// (see .env.example) or GitHub Actions secrets in CI.
 // ---------------------------------------------------------------------------
 
-export const CUSTOMER: Readonly<Credentials> = Object.freeze({
-  email: 'customer@practicesoftwaretesting.com',
-  password: 'welcome01',
-});
+const requireEnv = (name: string): string => {
+  const value = process.env[name];
+  if (!value) {
+    throw new Error(`Environment variable ${name} is not set (see .env.example)`);
+  }
+  return value;
+};
 
-export const CUSTOMER_2: Readonly<Credentials> = Object.freeze({
-  email: 'customer2@practicesoftwaretesting.com',
-  password: 'welcome01',
-});
+/** Values are read lazily, so a missing variable fails only the tests that use it */
+const envCredentials = (emailVar: string, passwordVar: string): Readonly<Credentials> =>
+  Object.freeze({
+    get email() {
+      return requireEnv(emailVar);
+    },
+    get password() {
+      return requireEnv(passwordVar);
+    },
+  });
+
+export const CUSTOMER = envCredentials('CUSTOMER_EMAIL', 'CUSTOMER_PASSWORD');
+
+export const CUSTOMER_2 = envCredentials('CUSTOMER2_EMAIL', 'CUSTOMER2_PASSWORD');
 
 export const EXISTING_CUSTOMERS = Object.freeze([CUSTOMER, CUSTOMER_2] as const);
 
